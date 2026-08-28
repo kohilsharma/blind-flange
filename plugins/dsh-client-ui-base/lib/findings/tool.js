@@ -63,10 +63,33 @@ export function createReportFindingsTool(fixturePath = FIXTURE_PATH) {
 				},
 				required: ["report", "findings"],
 			},
+			/**
+			 * What the model is given back, and therefore what it can reason from.
+			 *
+			 * This used to be the one-line summary alone. That was enough while the
+			 * `replay` provider answered, because the authored script already knew
+			 * what the report said — but it makes the tool useless to a model that
+			 * genuinely has to read it. Observed 29 Aug 2026 with Qwen3.5-4B on the
+			 * `local` provider: the harness hands the model exactly this `content`,
+			 * so the model received "Read 156 OCR findings" and correctly replied
+			 * that the findings themselves were not in the response.
+			 *
+			 * So the lines go back too, one per row, each carrying the page, the
+			 * bounding box and the confidence — the provenance the product's whole
+			 * claim rests on. Synthesising which of them are the key findings is the
+			 * model's job, and it cannot do that job without them.
+			 */
 			render: (_args, value) => [
 				{
 					type: "text",
-					text: `Read ${value.findings.length} OCR findings from ${value.report}.`,
+					text: [
+						`Read ${value.findings.length} OCR findings from ${value.report}.`,
+						"Each line is: page | left,top,width,height | confidence | text",
+						...value.findings.map(
+							(finding) =>
+								`p${finding.page} | ${finding.bbox.left},${finding.bbox.top},${finding.bbox.width},${finding.bbox.height} | ${finding.confidence} | ${finding.text}`,
+						),
+					].join("\n"),
 				},
 			],
 		},

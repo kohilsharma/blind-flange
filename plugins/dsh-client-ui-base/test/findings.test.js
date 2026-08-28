@@ -72,10 +72,22 @@ test("reads fresh from disk on every call — no stale in-memory cache", async (
 	}
 });
 
-test("render summarises the count and the report name without dumping every finding", () => {
+test("render gives the model the findings themselves, not just how many there were", () => {
+	// This content is what the harness hands the model as the tool result, so a
+	// summary alone left a real model with nothing to reason from — verified
+	// against Qwen3.5-4B on 29 Aug 2026, which reported the findings missing.
 	const tool = createReportFindingsTool();
-	const content = tool.output.render({}, { report: "sample-inspection-report.pdf", findings: [{}, {}, {}] });
+	const findings = [
+		{ text: "Insulation cladding open at the channel end", bbox: { left: 560, top: 2048, width: 814, height: 58 }, confidence: 100, page: 1 },
+		{ text: "Test tag expired 04-2026", bbox: { left: 560, top: 2171, width: 876, height: 60 }, confidence: 98.6, page: 2 },
+	];
+	const content = tool.output.render({}, { report: "sample-inspection-report.pdf", findings });
 	assert.equal(content[0].type, "text");
-	assert.match(content[0].text, /3 OCR findings/);
+	assert.match(content[0].text, /2 OCR findings/);
 	assert.match(content[0].text, /sample-inspection-report\.pdf/);
+	// The text of each finding, and the provenance the product's claim rests on.
+	assert.match(content[0].text, /Insulation cladding open at the channel end/);
+	assert.match(content[0].text, /Test tag expired 04-2026/);
+	assert.match(content[0].text, /p1 \| 560,2048,814,58/);
+	assert.match(content[0].text, /p2 \| 560,2171,876,60/);
 });

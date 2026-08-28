@@ -33,7 +33,8 @@ class RemoteModelProvider {
 
 const FACTORIES = {
 	replay: () => new ReplayModelProvider(),
-	local: () => new LocalModelProvider(),
+	/** `url` lets a profile point at a llama-server elsewhere — see `local-provider.js` on the GPU build. */
+	local: (options) => new LocalModelProvider(options?.url),
 	remote: () => new RemoteModelProvider(),
 };
 
@@ -53,6 +54,8 @@ const FACTORIES = {
  * **string**. `llm-adapter.js` turns those into the harness's block protocol.
  *
  * @param {string} name - one of "replay", "local", "remote".
+ * @param {{ url?: string }} [options] - provider-specific configuration, read from
+ *   `config.modelPlane` so the endpoint stays a config value rather than a code path (FR7).
  * @returns {{ answer(request: {
  *   messages: unknown[],
  *   tools?: { name: string, description: string, parameters: Record<string, unknown> }[],
@@ -62,10 +65,10 @@ const FACTORIES = {
  *   signal?: AbortSignal,
  * }): AsyncGenerator<{ type: "text", text: string } | { type: "tool-call", id: string, name: string, arguments: string }> }}
  */
-export function createModelProvider(name) {
+export function createModelProvider(name, options) {
 	const factory = FACTORIES[name];
 	if (!factory) {
 		throw new ModelProviderError(`unknown model provider "${name}" — expected one of: ${Object.keys(FACTORIES).join(", ")}`);
 	}
-	return factory();
+	return factory(options);
 }

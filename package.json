@@ -18,6 +18,7 @@
     "doctor": "node scripts/doctor.mjs",
     "setup-ingestion": "node scripts/setup-ingestion.mjs",
     "ingestion": "node scripts/run-ingestion.mjs",
-    "local-model": "vendor/llama.cpp/llama-server --models-dir models --models-max 2 --port 8790 -c 16384 -t 12 -ub 1024 -b 2048 --jinja --no-webui"
+    "local-model": "vendor/llama.cpp/llama-server --models-dir models --models-max 2 --port 8790 -c 16384 -t 12 -ub 1024 -b 2048 --jinja --no-webui",
+    "local-model-gpu": "cd /mnt/c/bf-llama && ./llama-server.exe --models-dir models --models-max 2 --port 8791 -ngl 99 -c 16384 --jinja --no-webui"
   }
 }

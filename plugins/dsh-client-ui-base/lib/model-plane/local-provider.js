@@ -89,7 +89,17 @@ function postJson(url, body, signal) {
 	});
 }
 
-/** llama-server's OpenAI-compatible route. Loopback only — see ADR-0001 on `remote`. */
+/**
+ * llama-server's OpenAI-compatible route. Loopback only — see ADR-0001 on `remote`.
+ *
+ * Overridable from `config.modelPlane.url`, which is how the GPU build is
+ * selected: llama.cpp publishes a CUDA binary for Windows but not for Linux,
+ * and this laptop's GPU is only reachable that way (WSL2 exposes CUDA but no
+ * Vulkan ICD, and Ubuntu's Mesa ships no Dozen driver either). So the GPU
+ * server runs as a Windows process through WSL interop on another port, and
+ * pointing at it is a config change rather than a code change. Measured
+ * 29 Aug 2026 on a 12,615-token prompt: 31 tok/s CPU, 168 tok/s GPU.
+ */
 const DEFAULT_URL = "http://127.0.0.1:8790/v1/chat/completions";
 
 /** Whether `message` is the genuine human turn, not harness-injected context (mirrors replay-provider.js's own check). */
@@ -212,6 +222,17 @@ export class LocalModelProvider {
 		// configured default (`agent-default-model.model`) is the fallback for a
 		// call the router never saw, such as session-title generation.
 		const model = toServerModelId(routedWeightsFor(request.sessionId) ?? request.model);
+
+		// Where the prompt's bulk actually is. Prompt evaluation dominates a turn
+		// on CPU (measured: 31 tok/s on the 4B), so the size of what we send is
+		// the single biggest lever on how long a turn takes.
+		console.warn(
+			`@blind-flange/dsh-client-ui-base: prompt ~${Math.round(
+				(request.system?.length ?? 0) / 4,
+			)} tok system + ~${Math.round(JSON.stringify(tools).length / 4)} tok tools (${tools.length}) + ~${Math.round(
+				JSON.stringify(chat).length / 4,
+			)} tok chat`,
+		);
 
 		let response;
 		try {

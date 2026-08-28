@@ -448,7 +448,7 @@ export function apply(ctx, config) {
 		llmCtx.effect(() => {
 			let modelProvider;
 			try {
-				modelProvider = createModelProvider(providerName);
+				modelProvider = createModelProvider(providerName, { url: config?.modelPlane?.url });
 			} catch (error) {
 				console.warn(`@blind-flange/dsh-client-ui-base: model plane not mounted — ${error.message}`);
 				return undefined;
