@@ -6,16 +6,16 @@ the decisions it reads from are in `docs/licence-decisions.json`, and the policy
 
 Run on 2026-08-28. Allow-list: Apache-2.0, MIT, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD, Python-2.0, MIT-CMU, BSL-1.0, Zlib, CC0-1.0 (ADR-0006).
 
-**Gate: PASS** — 490 components enumerated, 0 without a usable decision, 0 evidence paths missing.
+**Gate: PASS** — 489 components enumerated, 0 without a usable decision, 0 evidence paths missing.
 
 ## Scope
 
 | Tree | What it is | Components |
 |---|---|---|
-| `harness` | DeepSeek Harness (the pinned runtime) | 449 |
+| `harness` | DeepSeek Harness (the pinned runtime) | 451 |
 | `profile` | The web profile's own dependencies | 1 |
 | `ours` | Blind Flange's own packages | 1 |
-| `python` | The ingestion service, its fixture generator and its proof scripts | 29 |
+| `python` | The ingestion service, its fixture generator and its proof scripts | 26 |
 | `model` | The fleet in `registry/models.yaml`, through the loader's own gate | 4 |
 | `bundled` | Vendored components no metadata field names — declared in `docs/licence-decisions.json` | 7 |
 
@@ -23,14 +23,14 @@ Run on 2026-08-28. Allow-list: Apache-2.0, MIT, BSD-2-Clause, BSD-3-Clause, ISC,
 
 | Licence | Components |
 |---|---|
-| MIT | 366 |
+| MIT | 365 |
 | Apache-2.0 | 69 |
 | BSD-3-Clause | 25 |
 | ISC | 11 |
+| **LGPL-3.0-or-later** | 2 |
 | BSD-2-Clause | 2 |
 | **MPL-2.0** | 2 |
 | **Apache-2.0 AND LGPL-3.0-or-later AND MIT** | 1 |
-| **Apache-2.0 AND LGPL-3.0-or-later** | 1 |
 | Python-2.0 | 1 |
 | 0BSD | 1 |
 | BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0 | 1 |
@@ -39,7 +39,6 @@ Run on 2026-08-28. Allow-list: Apache-2.0, MIT, BSD-2-Clause, BSD-3-Clause, ISC,
 | **(Apache-2.0 OR BSD-3-Clause) AND LicenseRef-PdfiumThirdParty** | 1 |
 | **MPL-2.0 AND MIT** | 1 |
 | **Qwen Research Licence** | 1 |
-| **LGPL-3.0-or-later** | 1 |
 | **LGPL-2.1-or-later** | 1 |
 | BSL-1.0 | 1 |
 | **LicenseRef-PdfiumThirdParty** | 1 |
@@ -51,17 +50,17 @@ Every row carries a decision recorded in `docs/licence-decisions.json`, and ever
 
 | Component | Version | Licence | Tree | Verdict | Decision |
 |---|---|---|---|---|---|
+| `@img/sharp-libvips-linux-x64` | 1.3.3 | LGPL-3.0-or-later | npm | **outside the allow-list** | `disclosed` (ADR-0006) |
 | `@img/sharp-wasm32` | 0.35.4 | LGPL-3.0-or-later | npm | **outside the allow-list** | `disclosed` (ADR-0006) |
-| `@img/sharp-win32-x64` | 0.35.4 | LGPL-3.0-or-later | npm | **outside the allow-list** | `disclosed` (ADR-0006) |
-| `certifi` | 2026.1.4 | MPL-2.0 | python | **outside the allow-list** | `mitigated` (ADR-0006) |
+| `certifi` | 2026.7.22 | MPL-2.0 | python | **outside the allow-list** | `mitigated` (ADR-0006) |
 | `DarkGarden font family` | shipped as reportlab/fonts/DarkGardenMK.pfb and DarkGarden.sfd | GPL-2.0-or-later | bundled | **outside the allow-list** | `not-shipped` (ADR-0006) |
 | `Eigen` | shipped prebuilt inside onnxruntime.dll | MPL-2.0 | bundled | **outside the allow-list** | `disclosed` (ADR-0006) |
-| `FFmpeg` | 4.13.0 (opencv_videoio_ffmpeg4130_64.dll, 28.6 MB) | LGPL-2.1-or-later | bundled | **outside the allow-list** | `mitigated` (ADR-0006) |
+| `FFmpeg` | 4.13.0. Shipped as a lazily-loaded plugin DLL on Windows (opencv_videoio_ffmpeg4130_64.dll, 28.6 MB); as libavcodec/libavformat/libavutil/libswscale .so files on Linux, listed as direct NEEDED entries of cv2.abi3.so itself (confirmed with `ldd`, Story 6.3, 28 Aug 2026) | LGPL-2.1-or-later | bundled | **outside the allow-list** | `disclosed` (ADR-0006) |
 | `libvips` | 8.x (shipped prebuilt, no version file) | LGPL-3.0-or-later | bundled | **outside the allow-list** | `disclosed` (ADR-0006) |
 | `PDFium third-party sources` | bundled with pdfium.dll | LicenseRef-PdfiumThirdParty | bundled | **licence not established** | `accepted` (ADR-0006) |
 | `pypdfium2` | 4.30.0 | LicenseRef-PdfiumThirdParty | python | **licence not established** | `accepted` (ADR-0006) |
 | `Qwen/Qwen2.5-3B-Instruct` |  | Qwen | model | **outside the allow-list** | `refused` |
-| `tqdm` | 4.67.3 | MPL-2.0 | python | **outside the allow-list** | `mitigated` (ADR-0006) |
+| `tqdm` | 4.70.0 | MPL-2.0 | python | **outside the allow-list** | `mitigated` (ADR-0006) |
 
 ## The full enumeration
 
@@ -293,16 +292,18 @@ Every row carries a decision recorded in `docs/licence-decisions.json`, and ever
 | `@deepseek-ai/dsh-workflow-worker-thread` | 0.1.1-rc.2 | MIT | MIT | npm | allowed |
 | `@deepseek-ai/dsh-workspace` | 0.1.1-rc.2 | MIT | MIT | npm | allowed |
 | `@deepseek-ai/node-addon-landlock-run` | 0.1.1 | BSD-3-Clause | BSD-3-Clause | npm | allowed |
+| `@deepseek-ai/node-addon-landlock-run-linux-x64` | 0.1.1 | BSD-3-Clause | BSD-3-Clause | npm | allowed |
 | `@deepseek-ai/schemastery` | 3.18.1 | MIT | MIT | npm | allowed |
 | `@earendil-works/pi-ai` | 0.82.1 | MIT | MIT | npm | allowed |
 | `@emnapi/runtime` | 1.11.3 | MIT | MIT | npm | allowed |
 | `@google/genai` | 1.52.0 | Apache-2.0 | Apache-2.0 | npm | allowed |
 | `@hono/node-server` | 2.1.1 | MIT | MIT | npm | allowed |
 | `@img/colour` | 1.1.0 | MIT | MIT | npm | allowed |
+| `@img/sharp-libvips-linux-x64` | 1.3.3 | LGPL-3.0-or-later | LGPL-3.0-or-later | npm | flagged |
+| `@img/sharp-linux-x64` | 0.35.4 | Apache-2.0 | Apache-2.0 | npm | allowed |
 | `@img/sharp-wasm32` | 0.35.4 | Apache-2.0 AND LGPL-3.0-or-later AND MIT | Apache-2.0 AND LGPL-3.0-or-later AND MIT | npm | flagged |
-| `@img/sharp-win32-x64` | 0.35.4 | Apache-2.0 AND LGPL-3.0-or-later | Apache-2.0 AND LGPL-3.0-or-later | npm | flagged |
 | `@joplin/turndown-plugin-gfm` | 1.0.67 | MIT | MIT | npm | allowed |
-| `@koromix/koffi-win32-x64` | 3.1.6 | MIT | MIT | npm | allowed |
+| `@koromix/koffi-linux-x64` | 3.1.6 | MIT | MIT | npm | allowed |
 | `@mistralai/mistralai` | 2.2.6 | Apache-2.0 | Apache-2.0 | npm | allowed |
 | `@mixmark-io/domino` | 2.2.0 | BSD-2-Clause | BSD-2-Clause | npm | allowed |
 | `@modelcontextprotocol/sdk` | 1.30.0 | MIT | MIT | npm | allowed |
@@ -345,7 +346,7 @@ Every row carries a decision recorded in `docs/licence-decisions.json`, and ever
 | `@types/node` | 26.4.0 | MIT | MIT | npm | allowed |
 | `@types/retry` | 0.12.0 | MIT | MIT | npm | allowed |
 | `@vscode/ripgrep` | 1.18.0 | MIT | MIT | npm | allowed |
-| `@vscode/ripgrep-win32-x64` | 1.18.0 | MIT | MIT | npm | allowed |
+| `@vscode/ripgrep-linux-x64` | 1.18.0 | MIT | MIT | npm | allowed |
 | `accepts` | 2.0.0 | MIT | MIT | npm | allowed |
 | `agent-base` | 7.1.4 | MIT | MIT | npm | allowed |
 | `ajv` | 8.20.0 | MIT | MIT | npm | allowed |
@@ -449,7 +450,7 @@ Every row carries a decision recorded in `docs/licence-decisions.json`, and ever
 | `node-addon-api` | 7.1.1 | MIT | MIT | npm | allowed |
 | `node-addon-native-custom-loader` | 0.1.5 | MIT | MIT | npm | allowed |
 | `node-addon-require-builtin` | 0.1.5 | MIT | MIT | npm | allowed |
-| `node-addon-require-builtin-win32-x64-msvc` | 0.1.5 | MIT | MIT | npm | allowed |
+| `node-addon-require-builtin-linux-x64-gnu` | 0.1.5 | MIT | MIT | npm | allowed |
 | `node-domexception` | 1.0.0 | MIT | MIT | npm | allowed |
 | `node-fetch` | 3.3.2 | MIT | MIT | npm | allowed |
 | `node-pty` | 1.2.0-beta.15 | MIT | MIT | npm | allowed |
@@ -518,21 +519,19 @@ Every row carries a decision recorded in `docs/licence-decisions.json`, and ever
 | `zod-to-json-schema` | 3.25.2 | ISC | ISC | npm | allowed |
 | `zustand` | 4.4.7 | MIT | MIT | npm | allowed |
 | `antlr4-python3-runtime` | 4.9.3 | BSD | BSD-3-Clause | python | allowed |
-| `certifi` | 2026.1.4 | MPL-2.0 | MPL-2.0 | python | flagged |
+| `certifi` | 2026.7.22 | MPL-2.0 | MPL-2.0 | python | flagged |
 | `charset-normalizer` | 3.4.4 | MIT | MIT | python | allowed |
-| `colorama` | 0.4.6 | BSD License | BSD-3-Clause | python | allowed |
 | `colorlog` | 6.12.0 | MIT License | MIT | python | allowed |
 | `flatbuffers` | 25.12.19 | Apache 2.0 | Apache-2.0 | python | allowed |
-| `idna` | 3.11 | BSD-3-Clause | BSD-3-Clause | python | allowed |
-| `importlib-metadata` | 8.7.1 | Apache-2.0 | Apache-2.0 | python | allowed |
+| `idna` | 3.19 | BSD-3-Clause | BSD-3-Clause | python | allowed |
 | `mpmath` | 1.3.0 | BSD | BSD-3-Clause | python | allowed |
 | `numpy` | 2.4.3 | BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0 | BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0 | python | allowed |
 | `omegaconf` | 2.3.1 | BSD License | BSD-3-Clause | python | allowed |
 | `onnxruntime` | 1.24.4 | MIT License | MIT | python | allowed |
 | `opencv-python` | 4.13.0.92 | Apache 2.0 | Apache-2.0 | python | allowed |
-| `packaging` | 26.0 | Apache-2.0 OR BSD-2-Clause | Apache-2.0 OR BSD-2-Clause | python | allowed |
+| `packaging` | 26.3 | Apache-2.0 OR BSD-2-Clause | Apache-2.0 OR BSD-2-Clause | python | allowed |
 | `pillow` | 11.3.0 | MIT-CMU | MIT-CMU | python | allowed |
-| `protobuf` | 5.29.6 | 3-Clause BSD License | BSD-3-Clause | python | allowed |
+| `protobuf` | 7.36.0 | 3-Clause BSD License | BSD-3-Clause | python | allowed |
 | `psutil` | 7.2.2 | BSD-3-Clause | BSD-3-Clause | python | allowed |
 | `pyclipper` | 1.4.0 | MIT | MIT | python | allowed |
 | `pypdfium2` | 4.30.0 | (Apache-2.0 OR BSD-3-Clause) AND LicenseRef-PdfiumThirdParty | (Apache-2.0 OR BSD-3-Clause) AND LicenseRef-PdfiumThirdParty | python | ambiguous |
@@ -540,18 +539,17 @@ Every row carries a decision recorded in `docs/licence-decisions.json`, and ever
 | `pyyaml` | 6.0.3 | MIT | MIT | python | allowed |
 | `rapidocr` | 3.9.2 | Apache-2.0 | Apache-2.0 | python | allowed |
 | `reportlab` | 4.5.0 | BSD License | BSD-3-Clause | python | allowed |
-| `requests` | 2.32.5 | Apache-2.0 | Apache-2.0 | python | allowed |
+| `requests` | 2.34.2 | Apache-2.0 | Apache-2.0 | python | allowed |
 | `six` | 1.17.0 | MIT | MIT | python | allowed |
 | `sympy` | 1.14.0 | BSD | BSD-3-Clause | python | allowed |
-| `tqdm` | 4.67.3 | MPL-2.0 AND MIT | MPL-2.0 AND MIT | python | flagged |
-| `urllib3` | 2.6.3 | MIT | MIT | python | allowed |
-| `zipp` | 3.23.0 | MIT | MIT | python | allowed |
+| `tqdm` | 4.70.0 | MPL-2.0 AND MIT | MPL-2.0 AND MIT | python | flagged |
+| `urllib3` | 2.7.0 | MIT | MIT | python | allowed |
 | `Qwen/Qwen2.5-7B-Instruct` | a09a35458c702b33eeacc393d103063234e8bc28 | Apache-2.0 | Apache-2.0 | model | allowed |
 | `Qwen/Qwen2.5-Coder-7B-Instruct` | c03e6d358207e414f1eca0bb1891e29f1db0e242 | Apache-2.0 | Apache-2.0 | model | allowed |
 | `Qwen/Qwen2.5-VL-7B-Instruct` | cc594898137f460bfe9f0759e9844b3ce807cfb5 | Apache-2.0 | Apache-2.0 | model | allowed |
 | `Qwen/Qwen2.5-3B-Instruct` |  | Qwen Research Licence | Qwen Research Licence | model | flagged |
 | `libvips` | 8.x (shipped prebuilt, no version file) | LGPL-3.0-or-later | LGPL-3.0-or-later | bundled | flagged |
-| `FFmpeg` | 4.13.0 (opencv_videoio_ffmpeg4130_64.dll, 28.6 MB) | LGPL-2.1-or-later | LGPL-2.1-or-later | bundled | flagged |
+| `FFmpeg` | 4.13.0. Shipped as a lazily-loaded plugin DLL on Windows (opencv_videoio_ffmpeg4130_64.dll, 28.6 MB); as libavcodec/libavformat/libavutil/libswscale .so files on Linux, listed as direct NEEDED entries of cv2.abi3.so itself (confirmed with `ldd`, Story 6.3, 28 Aug 2026) | LGPL-2.1-or-later | LGPL-2.1-or-later | bundled | flagged |
 | `Clipper` | 6.4.2 | BSL-1.0 | BSL-1.0 | bundled | allowed |
 | `Eigen` | shipped prebuilt inside onnxruntime.dll | MPL-2.0 | MPL-2.0 | bundled | flagged |
 | `PDFium third-party sources` | bundled with pdfium.dll | LicenseRef-PdfiumThirdParty | LicenseRef-PdfiumThirdParty | bundled | ambiguous |

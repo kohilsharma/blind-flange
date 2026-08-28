@@ -111,7 +111,7 @@ for (const profile of PROFILES) {
   } else if (!dependency.startsWith('link:')) {
     warn(`the ${profile} profile depends on our plugin as "${dependency}", not a link:`, 'Run `npm run setup` so plugin edits reach the browser without a reinstall.')
   } else {
-    const target = dependency.slice('link:'.length).replace(/\//g, '\\')
+    const target = dependency.slice('link:'.length)
     const here = join(repoRoot, 'plugins', 'dsh-client-ui-base')
     if (resolve(target).toLowerCase() === resolve(here).toLowerCase()) ok(`the ${profile} profile points at this checkout`)
     else bad(`the ${profile} profile points at ${target}, not this checkout`, 'Run `npm run setup` — the path is baked in and this repo has moved or been re-cloned.')

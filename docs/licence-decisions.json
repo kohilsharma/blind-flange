@@ -45,17 +45,17 @@
   "bundled": [
     {
       "component": "libvips",
-      "inside": "@img/sharp-win32-x64@0.35.4 and @img/sharp-wasm32@0.35.4, which sharp@0.35.4 resolves for this platform",
+      "inside": "@img/sharp-wasm32@0.35.4, sharp@0.35.4's platform-independent fallback build — installed on every machine regardless of OS, confirmed on both the Windows build machine and a second, Linux machine (Story 6.3, 28 Aug 2026). The OS-native accelerated binary sharp also resolves per platform (@img/sharp-win32-x64 on Windows; @img/sharp-linux-x64 + the separate @img/sharp-libvips-linux-x64 on Linux) carries the same finding but isn't used as evidence here because its package name varies by platform and OS — wasm32 alone already proves the claim on any machine.",
       "licence": "LGPL-3.0-or-later",
       "version": "8.x (shipped prebuilt, no version file)",
       "role": "runtime",
-      "note": "No metadata field on sharp names it. sharp's own package.json says Apache-2.0; the platform binary packages say `Apache-2.0 AND LGPL-3.0-or-later`, and the LGPL half is libvips. Reached from @deepseek-ai/dsh-attachment-local, a harness plugin."
+      "note": "No metadata field on sharp names it. sharp's own package.json says Apache-2.0; the wasm32 fallback package's package.json says `Apache-2.0 AND LGPL-3.0-or-later AND MIT`, and the LGPL half is libvips. The same disclosure also shows up in the OS-native binary package (sharp-win32-x64 on Windows measured loaded; sharp-libvips-linux-x64 on Linux, confirmed present 28 Aug 2026) but that package's name is platform-specific, so wasm32 — present everywhere — is the evidence path that travels between machines. Reached from @deepseek-ai/dsh-attachment-local, a harness plugin."
     },
     {
       "component": "FFmpeg",
       "inside": "opencv-python@4.13.0.92",
       "licence": "LGPL-2.1-or-later",
-      "version": "4.13.0 (opencv_videoio_ffmpeg4130_64.dll, 28.6 MB)",
+      "version": "4.13.0. Shipped as a lazily-loaded plugin DLL on Windows (opencv_videoio_ffmpeg4130_64.dll, 28.6 MB); as libavcodec/libavformat/libavutil/libswscale .so files on Linux, listed as direct NEEDED entries of cv2.abi3.so itself (confirmed with `ldd`, Story 6.3, 28 Aug 2026)",
       "role": "runtime",
       "note": "opencv-python's METADATA says Apache 2.0 and its own LICENSE.txt says MIT; neither mentions FFmpeg. LICENSE-3RD-PARTY.txt does: \"FFmpeg is redistributed within all opencv-python packages\", followed by the LGPL text."
     },
@@ -119,9 +119,8 @@
       "licence": "LGPL-3.0-or-later",
       "decision": "disclosed",
       "recorded": "2026-08-28",
-      "reason": "Measured loaded on 28 August 2026: the running workbench process carried sharp-win32-x64-0.35.4.node, libvips-cpp-8.18.6.dll and libvips-42.dll. So it is genuinely linked, not merely present on disk. The obvious fix was tried and reverted: a `disabled: true` row for attachment-local makes the workbench fail to boot, because it is the sole provider of the `attachments` service and dsh-host-apiproxy — the API gateway carrying sessions, workspaces, presets and settings — requires it. No sharp-free attachment provider ships and NFR5 forbids editing harness source. LGPL-3.0 permits redistributing an unmodified library with notice and the ability to relink, which we satisfy: compliant, not permissive, and named on the attestation report.",
+      "reason": "Measured loaded on 28 August 2026: the running workbench process carried sharp-win32-x64-0.35.4.node, libvips-cpp-8.18.6.dll and libvips-42.dll. So it is genuinely linked, not merely present on disk. The obvious fix was tried and reverted: a `disabled: true` row for attachment-local makes the workbench fail to boot, because it is the sole provider of the `attachments` service and dsh-host-apiproxy — the API gateway carrying sessions, workspaces, presets and settings — requires it. No sharp-free attachment provider ships and NFR5 forbids editing harness source. LGPL-3.0 permits redistributing an unmodified library with notice and the ability to relink, which we satisfy: compliant, not permissive, and named on the attestation report. Confirmed a second time on a second machine (Story 6.3, Linux, 28 Aug 2026): sharp there resolves @img/sharp-linux-x64 + @img/sharp-libvips-linux-x64 instead of the Windows pair — still LGPL-3.0-or-later, same reasoning holds. The evidence path below was narrowed to @img/sharp-wasm32 alone, dropping the Windows-only sharp-win32-x64 path: wasm32 is sharp's platform-independent fallback build, installed regardless of OS, confirmed present with the same combined licence string on both machines — a single evidence path that travels, rather than one entry per platform.",
       "evidence": [
-        "{harness}/@img/sharp-win32-x64/package.json",
         "{harness}/@img/sharp-wasm32/package.json"
       ],
       "adr": "ADR-0006"
@@ -130,12 +129,11 @@
       "ecosystem": "bundled",
       "component": "FFmpeg",
       "licence": "LGPL-2.1-or-later",
-      "decision": "mitigated",
+      "decision": "disclosed",
       "recorded": "2026-08-28",
-      "reason": "Measured not loaded. A full OCR pass over the Story 4.1 fixture returns 97 regions at 99.68 mean confidence with cv2.pyd loaded and opencv_videoio_ffmpeg4130_64.dll never entering the process — it is a lazily-loaded video-I/O plugin and this service never opens a video. Redistributed but not linked: weaker than the shapely fix, which removed the package outright, and stronger than disclosure alone.",
+      "reason": "Windows: measured not loaded. A full OCR pass over the Story 4.1 fixture returns 97 regions at 99.68 mean confidence with cv2.pyd loaded and opencv_videoio_ffmpeg4130_64.dll never entering the process — it is a lazily-loaded video-I/O plugin and this service never opens a video. Linux (Story 6.3, a second machine, 28 Aug 2026): different story. `ldd` on cv2.abi3.so shows libavcodec/libavformat/libavutil/libswscale as direct dependencies, not a lazily-loaded plugin, and a running `python -c \"import cv2\"` process confirmed all four mapped into /proc/self/maps immediately — genuinely linked the moment the module loads, before any video I/O happens. Reclassified from `mitigated` to `disclosed` to be honest about the platform where it is unconditionally linked; LGPL-2.1 permits dynamic linking with notice and the ability to relink, which is satisfied the same way the libvips finding is.",
       "evidence": [
-        "{site-packages}/opencv_python-4.13.0.92.dist-info/LICENSE-3RD-PARTY.txt",
-        "{site-packages}/cv2/opencv_videoio_ffmpeg4130_64.dll"
+        "{site-packages}/opencv_python-4.13.0.92.dist-info/LICENSE-3RD-PARTY.txt"
       ],
       "adr": "ADR-0006"
     },
