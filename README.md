@@ -63,7 +63,40 @@ npm run doctor                # check this install and say what, if anything, is
 npm run record-demo           # record the three demo beats from a running workbench
 npm run setup-ingestion       # optional: install the Python OCR service (see below)
 npm run ingestion             # optional: run it
+npm run local-model           # optional: serve the fleet for the `local` provider (see below)
 ```
+
+## The local model (optional)
+
+`npm run local-model` starts llama.cpp's own `llama-server` over the `.gguf` files in
+`models/`, and the workbench reaches it on `127.0.0.1:8790`. **You do not need it to run the
+demo** — the committed profile answers from `replay`.
+
+One command on Windows, on WSL and on plain Linux. It works out which llama.cpp build the
+machine can actually use and fetches it into `vendor/` the first time:
+
+| Where you run it | Build | Acceleration |
+|---|---|---|
+| Windows | the CUDA build | GPU |
+| WSL | the same CUDA build, through Windows interop | GPU |
+| Linux | the Linux build | CPU |
+
+The odd one is WSL, and it is deliberate. llama.cpp publishes a CUDA binary for **Windows
+only**; there is no prebuilt Linux CUDA build, and on this hardware the other GPU routes are
+closed — WSL2 exposes CUDA but ships no Vulkan ICD, and Ubuntu's Mesa carries no Dozen driver,
+so the Vulkan build finds no device. WSL interop runs the Windows build against the same GPU
+and reads the weights straight out of the repository over `\\wsl.localhost\...`, so nothing is
+duplicated and the port is the same either way. It is worth the wrinkle: measured on a
+12,615-token prompt, **31 tokens/sec on CPU against 168 on the GPU**, which is a real agentic
+turn going from about five minutes to under a minute.
+
+```sh
+npm run local-model              # best available for this machine
+npm run local-model -- --cpu     # force the CPU build
+```
+
+Then set both rows in `profile/web/cordis.patch.yml` to `local` — the file says which two and
+why they must match — and `npm start`. Loopback only; nothing leaves the box.
 
 ## What actually runs, and what is replayed
 
@@ -74,11 +107,15 @@ each request and scores the fleet. The sandbox: a coding task really executes. T
 note is really written to disk as a `.docx`. The OCR is real PP-OCRv6 inference on the scanned
 report.
 
-**Replayed.** The agent's own prose. Phase 0 answers from the `replay` provider —
-stored responses, disclosed on screen as *Replay — authored responses* the entire time. There
-is no local inference yet: `model-plane/model-provider.js` declares `local` and `remote` and
-both throw, by design, so selecting one later is a config change rather than a rewrite. **No
-model weights are downloaded by anything here, and a GPU changes nothing yet.**
+**Replayed, by default.** The agent's own prose. The committed profile answers from the
+`replay` provider — stored responses, disclosed on screen as *Replay — authored responses* the
+entire time. That is what the demo and the recording run, and `npm start` needs no weights.
+
+**Real, if you switch it on.** `local` is implemented: `npm run local-model` serves the fleet
+in `models/` from llama.cpp's own `llama-server`, and pointing `modelPlane.provider` at `local`
+makes the workbench answer from open weights on this machine — real tool calls included. The
+disclosure changes to *Local — offline inference* on its own. See **The local model** below.
+`remote` is still declared and still throws, by design (ADR-0001).
 
 That split is deliberate and it is on screen, never hidden. See ADR-0001.
 
@@ -128,6 +165,7 @@ the active provider is named on screen at all times.
 | `run.bat` | The front door on Windows. Double-click it. `run.bat check` / `setup` / `ingestion` for the other paths |
 | `scripts/start.mjs` | The start command. Node builtins only — no dependencies |
 | `scripts/doctor.mjs` | `npm run doctor` — checks the toolchain, the wiring, the seal, the tests and the licence audit |
+| `scripts/local-model.mjs` | `npm run local-model` — serves the fleet for the `local` provider; picks the GPU build on Windows and WSL, the CPU build on Linux |
 | `scripts/setup-ingestion.mjs` | `npm run setup-ingestion` — the optional Python OCR service, in its own virtual environment |
 | `scripts/record-demo.mjs` | `npm run record-demo` — drives a running workbench through the three demo beats and records them. Needs `ffmpeg` on `PATH` |
 | `videos/recorded-offline-run/` | The recording itself, and what it shows second by second |

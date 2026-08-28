@@ -91,14 +91,12 @@
   config:
     modelPlane:
       provider: local
-      # The GPU llama-server. llama.cpp ships a CUDA build for Windows but not
-      # for Linux, and this laptop's GPU is reachable no other way — WSL2 gives
-      # CUDA but no Vulkan ICD, and Ubuntu's Mesa has no Dozen driver — so the
-      # GPU server runs as a Windows process through WSL interop on 8791 while
-      # the CPU one (`npm run local-model`) stays on 8790. Same MIT llama.cpp,
-      # same GGUF files, same API; loopback either way, nothing leaves the box.
-      # Measured on a 12,615-token prompt: 31 tok/s CPU, 168 tok/s GPU.
-      url: http://127.0.0.1:8791/v1/chat/completions
+      # Where `npm run local-model` serves. One port on every platform: the
+      # script works out which llama.cpp build the machine can use — the CUDA
+      # build on Windows, the same build through interop on WSL, the Linux
+      # build otherwise — so this line does not change between them.
+      # Loopback only, nothing leaves the box.
+      url: http://127.0.0.1:8790/v1/chat/completions
 
 # Story 3.7: the routing chip replaces the stock model picker.
 # conversation.input.model is a single slot; disabling ui-model-selection
