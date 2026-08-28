@@ -140,8 +140,12 @@ const webPatch = join(dshHome, 'profiles', 'web', 'cordis.patch.yml')
 if (existsSync(webPatch)) {
   const patch = readFileSync(webPatch, 'utf8')
   const provider = patch.match(/provider:\s*(\w+)/)?.[1]
+  // ADR-0001 forbids `remote` during a demo or a recording. It does not forbid
+  // `local` — that is the sovereignty claim actually running. So this checks for
+  // the thing the ADR bans rather than for one permitted name.
   if (provider === 'replay') ok('the model plane is set to the replay provider')
-  else if (provider) bad(`the model plane is set to "${provider}", not replay`, 'ADR-0001 keeps `remote` out of every demo. Check profile/web/cordis.patch.yml.')
+  else if (provider === 'local') warn('the model plane is set to the local provider, not replay', 'Fine for development, and ADR-0001 permits it. The demo and the recording run `replay`.')
+  else if (provider) bad(`the model plane is set to "${provider}", not replay or local`, 'ADR-0001 keeps `remote` out of every demo. Check profile/web/cordis.patch.yml.')
   else warn('could not read which model provider the profile selects', 'Check profile/web/cordis.patch.yml by hand.')
 
   if (/web-search/.test(patch) && /disabled:\s*true/.test(patch)) ok('the web-search tool is disabled in the profile')

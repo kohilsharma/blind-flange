@@ -7,6 +7,7 @@
  * `llm-adapter.js`; nothing in this file knows the harness exists.
  */
 
+import { LocalModelProvider } from "./local-provider.js";
 import { ReplayModelProvider } from "./replay-provider.js";
 
 /** Thrown when a configured provider name has no implementation to select, or when a selected provider cannot answer. */
@@ -14,21 +15,6 @@ export class ModelProviderError extends Error {
 	constructor(message) {
 		super(message);
 		this.name = "ModelProviderError";
-	}
-}
-
-/**
- * `local` is llama.cpp on the GTX 1650 (ADR-0001) — a day-4 stretch goal in
- * this four-day build, so there is no implementation yet. Declaring it here,
- * failing loud rather than answering nothing, is what keeps "select local"
- * a configuration change once it exists rather than a fork of this file.
- */
-class LocalModelProvider {
-	// Always throws before any yield; the generator shape is the contract other providers meet.
-	async *answer() {
-		throw new ModelProviderError(
-			"the local model provider is a day-4 stretch goal (ADR-0001) and has no implementation in this Phase 0 build",
-		);
 	}
 }
 

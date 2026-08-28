@@ -17,6 +17,7 @@
     "kiosk": "node scripts/kiosk.mjs",
     "doctor": "node scripts/doctor.mjs",
     "setup-ingestion": "node scripts/setup-ingestion.mjs",
-    "ingestion": "node scripts/run-ingestion.mjs"
+    "ingestion": "node scripts/run-ingestion.mjs",
+    "local-model": "vendor/llama.cpp/llama-server -m models/qwen2.5-1.5b-instruct-q4_k_m.gguf --port 8790 -c 8192 --no-webui"
   }
 }

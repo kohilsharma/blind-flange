@@ -13,6 +13,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { createReportFindingsTool } from "../lib/findings/tool.js";
 import { createLlmAdapter } from "../lib/model-plane/llm-adapter.js";
+import { LocalModelProvider, toChatMessages } from "../lib/model-plane/local-provider.js";
 import { createModelProvider, ModelProviderError } from "../lib/model-plane/model-provider.js";
 import { ReplayModelProvider } from "../lib/model-plane/replay-provider.js";
 
@@ -28,9 +29,39 @@ test("createModelProvider selects by name — the only place ADR-0001's config s
 	assert.throws(() => createModelProvider("nonexistent"), ModelProviderError);
 });
 
-test("local and remote are declared but fail loud instead of answering nothing (day-4 stretch / dev-only)", async () => {
-	await assert.rejects(() => collect(createModelProvider("local").answer({ messages: [] })), ModelProviderError);
+test("remote is declared but fails loud instead of answering nothing (dev-only, ADR-0001)", async () => {
 	await assert.rejects(() => collect(createModelProvider("remote").answer({ messages: [] })), ModelProviderError);
+});
+
+test("local refuses a turn with no genuine human message rather than prompting the model with nothing", async () => {
+	await assert.rejects(() => collect(createModelProvider("local").answer({ messages: [] })), ModelProviderError);
+});
+
+test("local names llama-server, and how to start it, when nothing is listening", async () => {
+	// Port 1 is privileged and never bound, so the fetch fails without reaching anything.
+	const provider = new LocalModelProvider("http://127.0.0.1:1/v1/chat/completions");
+	const request = { messages: [{ role: "user", content: [{ type: "text", text: "hello" }] }] };
+	await assert.rejects(() => collect(provider.answer(request)), (error) => {
+		assert.ok(error instanceof ModelProviderError);
+		assert.match(error.message, /llama-server/);
+		assert.match(error.message, /npm run local-model/);
+		return true;
+	});
+});
+
+test("local sends the human turns and assistant replies, and drops tool results and injected context", () => {
+	const chat = toChatMessages([
+		{ role: "user", content: [{ type: "text", text: "the real question" }] },
+		{ role: "user", content: [{ type: "text", text: "a skill catalog" }], source: { kind: "skill-catalog" } },
+		{ role: "user", content: [{ type: "text", text: "a tool result" }], source: { kind: "tool" } },
+		{ role: "assistant", content: [{ type: "text", text: "the real answer" }] },
+		{ role: "user", content: [{ type: "text", text: "the follow-up" }] },
+	]);
+	assert.deepEqual(chat, [
+		{ role: "user", content: "the real question" },
+		{ role: "assistant", content: "the real answer" },
+		{ role: "user", content: "the follow-up" },
+	]);
 });
 
 test("ReplayModelProvider matches an entry by substring against the last user message", async () => {

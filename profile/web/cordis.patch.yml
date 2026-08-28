@@ -70,8 +70,27 @@
 # makes a session answer at all.
 - id: agent-default-model
   config:
-    provider: replay
-    model: replay-authored-v1
+    provider: local
+    model: qwen2.5-1.5b-instruct-q4_k_m
+
+# ADR-0001: which model plane answers. `bf-base` defaults to `replay` in code
+# (lib/index.js), so this row exists only to select something else. `local` is
+# real inference through llama.cpp's own llama-server, started separately with
+# `npm run local-model`; with nothing listening on its port a turn fails loudly
+# rather than silently falling back, which is the point of the seam.
+#
+# THESE TWO ROWS MUST NAME THE SAME PROVIDER. lib/index.js registers the
+# adapter under the provider's own name (`registerAdapter([providerName])`),
+# so `agent-default-model.provider` above is the route a session asks for and
+# `modelPlane.provider` here is what answers on it. Set one without the other
+# and the session asks for a route nothing serves: the turn does not error, it
+# silently never runs.
+#
+# The demo and the recording run `replay` — set both back before either.
+- id: bf-base
+  config:
+    modelPlane:
+      provider: local
 
 # Story 3.7: the routing chip replaces the stock model picker.
 # conversation.input.model is a single slot; disabling ui-model-selection

@@ -98,6 +98,14 @@
       "version": "shipped as reportlab/fonts/DarkGardenMK.pfb and DarkGarden.sfd",
       "role": "build-time",
       "note": "The one copyleft file in the tree that is unambiguously copyleft with no argument available. The fixture generator draws with the PDF base-14 names only, so no font file is embedded in any output — but the file ships inside a dependency and belongs on the attestation report either way."
+    },
+    {
+      "component": "llama.cpp (llama-server and the ggml libraries it loads)",
+      "inside": "vendor/llama.cpp — the prebuilt llama-b10679-bin-ubuntu-x64 release, fetched rather than tracked (.gitignore), the way the pinned harness is",
+      "licence": "MIT",
+      "version": "b10679 (reports 0.3.0-dev, commit 50f068fff)",
+      "role": "runtime",
+      "note": "The inference engine behind the `local` model provider (ADR-0001). MIT, verified by reading vendor/llama.cpp/LICENSE in the extracted release on 29 August 2026 — 'MIT License, Copyright (c) 2023-2026 The ggml authors'. On the allow-list, so it carries no decision; it is declared here so the audit enumerates it rather than leaving a third-party binary the licence claim never looked at. Its own dynamic dependencies (libssl, libcrypto, libstdc++, libgomp, libz, libzstd) resolve to the operating system's own copies and are not redistributed by this project."
     }
   ],
   "decisions": [

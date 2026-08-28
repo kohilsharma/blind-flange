@@ -16,6 +16,11 @@ Thumbs.db
 models/
 .cache/
 
+# The prebuilt llama.cpp binaries the `local` model provider runs against
+# (ADR-0001). MIT, but third-party and ~50 MB unpacked, so it is fetched
+# rather than tracked - the same treatment the pinned harness gets.
+vendor/
+
 # The BMAD tool installation itself is NOT tracked — removed 28 Aug 2026.
 #
 # `.claude/skills/` is 49 third-party skill packages and `_bmad/` is the
