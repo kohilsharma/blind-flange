@@ -71,7 +71,7 @@
 - id: agent-default-model
   config:
     provider: local
-    model: qwen2.5-1.5b-instruct-q4_k_m
+    model: Qwen3.5-4B-Q4_K_M
 
 # ADR-0001: which model plane answers. `bf-base` defaults to `replay` in code
 # (lib/index.js), so this row exists only to select something else. `local` is

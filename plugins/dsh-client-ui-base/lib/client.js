@@ -1784,7 +1784,7 @@ window.__ModuleLoader__.load({
 			// defers the register/dispose pair until the parent has declared it.
 			const disposeIndicator = ctx.slots.inject("conversation.hero.agentPreset", () => {
 				const dispose = ctx.slots.register(
-					{ name: "conversation.hero.agentPreset", id: "bf-task-type-indicator" },
+					{ name: "conversation.hero.agentPreset", id: "bf-task-type-indicator", priority: -1 },
 					TaskTypeIndicator,
 				);
 				return () => { dispose(); };

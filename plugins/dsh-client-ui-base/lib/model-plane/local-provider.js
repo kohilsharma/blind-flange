@@ -32,8 +32,62 @@
  * `remote` stays unimplemented (ADR-0001): this reaches loopback only.
  */
 
+import { request as httpRequest } from "node:http";
 import { routedWeightsFor } from "../router/selection.js";
 import { ModelProviderError } from "./model-provider.js";
+
+/**
+ * POST JSON and read the whole reply, with no time limit.
+ *
+ * `fetch` cannot be used here. Node's implementation caps time-to-first-byte
+ * at 300 s (undici's `headersTimeout`) and exposes no public way to raise it,
+ * and a non-streaming completion sends no byte until generation finishes. On
+ * this hardware a real agentic turn is slower than that: measured 29 Aug 2026,
+ * a 9,360-token prompt took 324 s, so the model answered correctly and the
+ * client had already given up — the workbench showed "could not reach
+ * llama-server" for a request that succeeded.
+ *
+ * `node:http` has no such cap. Builtins only, by policy.
+ */
+/** How long to wait for the TCP connection itself. Generation gets no limit; see `postJson`. */
+const CONNECT_TIMEOUT_MS = 5000;
+
+function postJson(url, body, signal) {
+	return new Promise((resolve, reject) => {
+		const target = new URL(url);
+		const payload = Buffer.from(JSON.stringify(body));
+		const req = httpRequest(
+			{
+				hostname: target.hostname,
+				port: target.port,
+				path: target.pathname + target.search,
+				method: "POST",
+				headers: { "Content-Type": "application/json", "Content-Length": payload.length },
+			},
+			(res) => {
+				const chunks = [];
+				res.on("data", (chunk) => chunks.push(chunk));
+				res.on("end", () => resolve({ status: res.statusCode ?? 0, text: Buffer.concat(chunks).toString("utf8") }));
+			},
+		);
+		// Two different deadlines, and conflating them is the bug this avoids.
+		// *Connecting* must fail fast, so a llama-server that was never started
+		// reports "could not reach" instead of hanging the turn forever. Once
+		// connected, there is no deadline at all: a local model is slow, not
+		// stuck, and a 5-minute prompt eval is normal on CPU.
+		req.on("socket", (socket) => {
+			socket.setTimeout(CONNECT_TIMEOUT_MS);
+			socket.once("timeout", () => req.destroy(new Error(`no connection to ${url} within ${CONNECT_TIMEOUT_MS} ms`)));
+			socket.once("connect", () => socket.setTimeout(0));
+		});
+		req.on("error", reject);
+		if (signal) {
+			if (signal.aborted) req.destroy(signal.reason ?? new Error("aborted"));
+			else signal.addEventListener("abort", () => req.destroy(signal.reason ?? new Error("aborted")), { once: true });
+		}
+		req.end(payload);
+	});
+}
 
 /** llama-server's OpenAI-compatible route. Loopback only — see ADR-0001 on `remote`. */
 const DEFAULT_URL = "http://127.0.0.1:8790/v1/chat/completions";
@@ -123,6 +177,20 @@ export function toOpenAiTools(tools) {
 	}));
 }
 
+/**
+ * The id llama-server answers to, from the weights file the registry names.
+ *
+ * `--models-dir` derives a model's id from its filename **stem**: a directory
+ * holding `Qwen3.5-4B-Q4_K_M.gguf` serves it as `Qwen3.5-4B-Q4_K_M`, and
+ * asking for the name with the extension is a 400 (verified 29 Aug 2026).
+ * The registry keeps naming the real file, because a `weights:` value an
+ * auditor can `ls` is worth more than one that only means something to this
+ * function.
+ */
+export function toServerModelId(weights) {
+	return typeof weights === "string" ? weights.replace(/\.gguf$/i, "") : weights;
+}
+
 export class LocalModelProvider {
 	/** @param {string} [url] - override for tests; defaults to the local llama-server. */
 	constructor(url = DEFAULT_URL) {
@@ -143,15 +211,13 @@ export class LocalModelProvider {
 		// weights file it declares. The router's choice wins; the session's
 		// configured default (`agent-default-model.model`) is the fallback for a
 		// call the router never saw, such as session-title generation.
-		const model = routedWeightsFor(request.sessionId) ?? request.model;
+		const model = toServerModelId(routedWeightsFor(request.sessionId) ?? request.model);
 
 		let response;
 		try {
-			response = await fetch(this.url, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				signal: request.signal,
-				body: JSON.stringify({
+			response = await postJson(
+				this.url,
+				{
 					// Names the model llama-server should answer with. In router mode
 					// (`--models-dir`) this is how one server serves the whole fleet;
 					// with a single `-m` model it is ignored, so sending it is safe
@@ -161,8 +227,9 @@ export class LocalModelProvider {
 					...(tools.length > 0 ? { tools, tool_choice: "auto" } : {}),
 					max_tokens: 1024,
 					temperature: 0.3,
-				}),
-			});
+				},
+				request.signal,
+			);
 		} catch (cause) {
 			if (cause?.name === "AbortError") throw cause;
 			throw new ModelProviderError(
@@ -170,12 +237,11 @@ export class LocalModelProvider {
 				{ cause },
 			);
 		}
-		if (!response.ok) {
+		if (response.status < 200 || response.status >= 300) {
 			throw new ModelProviderError(`llama-server answered HTTP ${response.status}`);
 		}
 
-		const body = await response.json();
-		const choice = body.choices?.[0]?.message ?? {};
+		const choice = JSON.parse(response.text).choices?.[0]?.message ?? {};
 
 		if (choice.content) yield { type: "text", text: choice.content };
 

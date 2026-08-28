@@ -40,8 +40,15 @@ test("local refuses a turn with no genuine human message rather than prompting t
 });
 
 test("local names llama-server, and how to start it, when nothing is listening", async () => {
-	// Port 1 is privileged and never bound, so the fetch fails without reaching anything.
-	const provider = new LocalModelProvider("http://127.0.0.1:1/v1/chat/completions");
+	// A port that was bound and then released: certain to be closed, and
+	// unprivileged. Port 1 looks tidier but under WSL2 a connection there hangs
+	// instead of being refused, which would hang this test rather than fail it.
+	const probe = createServer();
+	await new Promise((ready) => probe.listen(0, "127.0.0.1", ready));
+	const deadPort = probe.address().port;
+	await new Promise((closed) => probe.close(closed));
+
+	const provider = new LocalModelProvider(`http://127.0.0.1:${deadPort}/v1/chat/completions`);
 	const request = { messages: [{ role: "user", content: [{ type: "text", text: "hello" }] }] };
 	await assert.rejects(() => collect(provider.answer(request)), (error) => {
 		assert.ok(error instanceof ModelProviderError);
@@ -176,12 +183,13 @@ test("the model that answers is the one the router picked — the routing chip's
 		recordRoutedWeights("session-a", "Qwen2.5-Coder-1.5B-Instruct-Q4_K_M.gguf");
 
 		await collect(provider.answer({ messages: [userText("write a function")], sessionId: "session-a", model: "some-default.gguf" }));
-		// The router's choice wins over the session's configured default.
-		assert.equal(received.model, "Qwen2.5-Coder-1.5B-Instruct-Q4_K_M.gguf");
+		// The router's choice wins over the session's configured default, addressed
+		// by filename stem — llama-server 400s on the name with the extension.
+		assert.equal(received.model, "Qwen2.5-Coder-1.5B-Instruct-Q4_K_M");
 
 		// A session the router never ran for falls back rather than borrowing another session's model.
 		await collect(provider.answer({ messages: [userText("hello")], sessionId: "session-b", model: "some-default.gguf" }));
-		assert.equal(received.model, "some-default.gguf");
+		assert.equal(received.model, "some-default");
 	} finally {
 		await new Promise((closed) => server.close(closed));
 	}
