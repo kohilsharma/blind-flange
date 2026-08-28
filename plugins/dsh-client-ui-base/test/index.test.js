@@ -438,7 +438,7 @@ test("scores the licence-checked fleet against the classified task type and reco
 	assert.ok(routed, "no router/routed event recorded");
 	assert.equal(routed.data.taskType, "code");
 	assert.equal(routed.data.turn, 2);
-	assert.equal(routed.data.selected, "Qwen/Qwen2.5-Coder-7B-Instruct");
+	assert.equal(routed.data.selected, "Qwen/Qwen2.5-Coder-1.5B-Instruct");
 	assert.ok(Array.isArray(routed.data.scored) && routed.data.scored.length > 0);
 	assert.ok(routed.data.scored.every((entry) => typeof entry.score === "number"));
 	assert.ok(Array.isArray(routed.data.excluded));
@@ -491,9 +491,9 @@ test("Story 3.8: a second turn classifying as a different task type routes to a 
 	const routed = agent.events.filter((event) => event.type === "router/routed");
 	assert.equal(routed.length, 2, "one routing decision per turn");
 	assert.equal(routed[0].data.taskType, "document");
-	assert.equal(routed[0].data.selected, "Qwen/Qwen2.5-VL-7B-Instruct");
+	assert.equal(routed[0].data.selected, "Qwen/Qwen3.5-4B");
 	assert.equal(routed[1].data.taskType, "code");
-	assert.equal(routed[1].data.selected, "Qwen/Qwen2.5-Coder-7B-Instruct");
+	assert.equal(routed[1].data.selected, "Qwen/Qwen2.5-Coder-1.5B-Instruct");
 	assert.notEqual(routed[0].data.selected, routed[1].data.selected);
 	assert.equal(routed[1].data.turn, 2);
 });

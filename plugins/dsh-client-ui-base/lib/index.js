@@ -79,6 +79,7 @@ import { createModelProvider } from "./model-plane/model-provider.js";
 import { loadFleet } from "./registry/loader.js";
 import { classifyRequest, lastUserText } from "./router/classify.js";
 import { scoreFleet } from "./router/score.js";
+import { recordRoutedWeights } from "./router/selection.js";
 import { registerKnownSessionEventTypes } from "./session-events/known-types.js";
 
 const FAVICON_PATH = "/blind-flange/favicon.svg";
@@ -241,8 +242,13 @@ function classifyAndRoute(agent, turn, step, messages) {
 		return;
 	}
 	try {
-		const routing = scoreFleet(classification.taskType, loadFleet().loaded);
+		const fleet = loadFleet().loaded;
+		const routing = scoreFleet(classification.taskType, fleet);
 		agent.session.append(ROUTED_EVENT, { turn, step, ...routing });
+		// Hand the decision to the model plane, so the member the chip names is
+		// the member that answers (ADR-0002). Recorded after the append, so a
+		// selection is never acted on that the session log does not carry.
+		recordRoutedWeights(agent.session?.id, fleet.find((member) => member.name === routing.selected)?.weights);
 	} catch (error) {
 		console.warn(`@blind-flange/dsh-client-ui-base: fleet not scored — ${error instanceof Error ? error.message : String(error)}`);
 	}

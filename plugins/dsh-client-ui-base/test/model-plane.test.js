@@ -13,7 +13,9 @@ import { join } from "node:path";
 import test from "node:test";
 import { createReportFindingsTool } from "../lib/findings/tool.js";
 import { createLlmAdapter } from "../lib/model-plane/llm-adapter.js";
-import { LocalModelProvider, toChatMessages } from "../lib/model-plane/local-provider.js";
+import { createServer } from "node:http";
+import { LocalModelProvider, toChatMessages, toOpenAiTools } from "../lib/model-plane/local-provider.js";
+import { recordRoutedWeights } from "../lib/router/selection.js";
 import { createModelProvider, ModelProviderError } from "../lib/model-plane/model-provider.js";
 import { ReplayModelProvider } from "../lib/model-plane/replay-provider.js";
 
@@ -49,11 +51,10 @@ test("local names llama-server, and how to start it, when nothing is listening",
 	});
 });
 
-test("local sends the human turns and assistant replies, and drops tool results and injected context", () => {
+test("local sends the human turns and assistant replies, and drops harness-injected context", () => {
 	const chat = toChatMessages([
 		{ role: "user", content: [{ type: "text", text: "the real question" }] },
 		{ role: "user", content: [{ type: "text", text: "a skill catalog" }], source: { kind: "skill-catalog" } },
-		{ role: "user", content: [{ type: "text", text: "a tool result" }], source: { kind: "tool" } },
 		{ role: "assistant", content: [{ type: "text", text: "the real answer" }] },
 		{ role: "user", content: [{ type: "text", text: "the follow-up" }] },
 	]);
@@ -62,6 +63,128 @@ test("local sends the human turns and assistant replies, and drops tool results 
 		{ role: "assistant", content: "the real answer" },
 		{ role: "user", content: "the follow-up" },
 	]);
+});
+
+test("local round-trips the tool loop, so the model can see the call it already made", () => {
+	const chat = toChatMessages([
+		userText("read the report"),
+		{ role: "assistant", content: [{ type: "tool-call", id: "call-1", name: "bf_report_findings", arguments: "{}" }] },
+		toolResult("call-1", { findings: 2 }),
+	]);
+	assert.deepEqual(chat, [
+		{ role: "user", content: "read the report" },
+		{
+			role: "assistant",
+			content: "",
+			tool_calls: [{ id: "call-1", type: "function", function: { name: "bf_report_findings", arguments: "{}" } }],
+		},
+		{ role: "tool", tool_call_id: "call-1", content: JSON.stringify({ findings: 2 }) },
+	]);
+});
+
+test("local maps harness tool schemas to OpenAI's shape, passing the JSON Schema through untouched", () => {
+	const parameters = { type: "object", properties: { page: { type: "number" } }, required: ["page"] };
+	assert.deepEqual(toOpenAiTools([{ name: "bf_crop", description: "Crop a region.", parameters }]), [
+		{ type: "function", function: { name: "bf_crop", description: "Crop a region.", parameters } },
+	]);
+	assert.deepEqual(toOpenAiTools(undefined), []);
+});
+
+test("local turns llama-server's tool_calls into tool-call pieces, keeping arguments a raw JSON string", async () => {
+	const server = createServer((req, res) => {
+		res.writeHead(200, { "content-type": "application/json" });
+		res.end(
+			JSON.stringify({
+				choices: [
+					{
+						message: {
+							content: "Reading the report.",
+							tool_calls: [{ id: "call-9", type: "function", function: { name: "bf_report_findings", arguments: '{"page":1}' } }],
+						},
+					},
+				],
+			}),
+		);
+	});
+	await new Promise((ready) => server.listen(0, "127.0.0.1", ready));
+	try {
+		const provider = new LocalModelProvider(`http://127.0.0.1:${server.address().port}/v1/chat/completions`);
+		const pieces = await collect(provider.answer({ messages: [userText("read the report")] }));
+		assert.deepEqual(pieces, [
+			{ type: "text", text: "Reading the report." },
+			{ type: "tool-call", id: "call-9", name: "bf_report_findings", arguments: '{"page":1}' },
+		]);
+		// A string, not an object: the harness parses it and preserves invalid JSON verbatim.
+		assert.equal(typeof pieces[1].arguments, "string");
+	} finally {
+		await new Promise((closed) => server.close(closed));
+	}
+});
+
+test("local sends the harness's system prompt and the tool schemas, not its own invention", async () => {
+	let received = null;
+	const server = createServer((req, res) => {
+		let raw = "";
+		req.on("data", (chunk) => {
+			raw += chunk;
+		});
+		req.on("end", () => {
+			received = JSON.parse(raw);
+			res.writeHead(200, { "content-type": "application/json" });
+			res.end(JSON.stringify({ choices: [{ message: { content: "ok" } }] }));
+		});
+	});
+	await new Promise((ready) => server.listen(0, "127.0.0.1", ready));
+	try {
+		const provider = new LocalModelProvider(`http://127.0.0.1:${server.address().port}/v1/chat/completions`);
+		await collect(
+			provider.answer({
+				messages: [userText("hello")],
+				system: "You are Blind Flange.",
+				tools: [{ name: "bf_canary", description: "Fire it.", parameters: { type: "object", properties: {} } }],
+				model: "Qwen3.5-4B",
+			}),
+		);
+		assert.equal(received.messages[0].role, "system");
+		assert.equal(received.messages[0].content, "You are Blind Flange.");
+		assert.equal(received.tools[0].function.name, "bf_canary");
+		assert.equal(received.tool_choice, "auto");
+		// With no routed selection for this session, the configured default is sent.
+		assert.equal(received.model, "Qwen3.5-4B");
+	} finally {
+		await new Promise((closed) => server.close(closed));
+	}
+});
+
+test("the model that answers is the one the router picked — the routing chip's honesty, end to end", async () => {
+	let received = null;
+	const server = createServer((req, res) => {
+		let raw = "";
+		req.on("data", (chunk) => {
+			raw += chunk;
+		});
+		req.on("end", () => {
+			received = JSON.parse(raw);
+			res.writeHead(200, { "content-type": "application/json" });
+			res.end(JSON.stringify({ choices: [{ message: { content: "ok" } }] }));
+		});
+	});
+	await new Promise((ready) => server.listen(0, "127.0.0.1", ready));
+	try {
+		const provider = new LocalModelProvider(`http://127.0.0.1:${server.address().port}/v1/chat/completions`);
+		// What the router does after scoring the fleet, for this session.
+		recordRoutedWeights("session-a", "Qwen2.5-Coder-1.5B-Instruct-Q4_K_M.gguf");
+
+		await collect(provider.answer({ messages: [userText("write a function")], sessionId: "session-a", model: "some-default.gguf" }));
+		// The router's choice wins over the session's configured default.
+		assert.equal(received.model, "Qwen2.5-Coder-1.5B-Instruct-Q4_K_M.gguf");
+
+		// A session the router never ran for falls back rather than borrowing another session's model.
+		await collect(provider.answer({ messages: [userText("hello")], sessionId: "session-b", model: "some-default.gguf" }));
+		assert.equal(received.model, "some-default.gguf");
+	} finally {
+		await new Promise((closed) => server.close(closed));
+	}
 });
 
 test("ReplayModelProvider matches an entry by substring against the last user message", async () => {
@@ -384,12 +507,12 @@ test("createLlmAdapter satisfies the duck-typed registerAdapter contract without
 	assert.equal(adapter.providerRetryPolicy("replay"), undefined);
 
 	// listModels now reads the fleet from registry/models.yaml (Story 3.3): the
-	// three allowed members, attributed to the provider, with the Qwen Research
+	// allowed members, attributed to the provider, with the Qwen Research
 	// member filtered out.
 	const listed = await adapter.listModels("replay");
 	assert.deepEqual(
 		listed.map((m) => m.id),
-		["Qwen/Qwen2.5-7B-Instruct", "Qwen/Qwen2.5-Coder-7B-Instruct", "Qwen/Qwen2.5-VL-7B-Instruct"],
+		["Qwen/Qwen3.5-4B", "Qwen/Qwen2.5-Coder-1.5B-Instruct"],
 	);
 	assert.ok(listed.every((m) => m.provider === "replay"));
 

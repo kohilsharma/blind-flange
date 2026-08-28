@@ -42,8 +42,25 @@ const FACTORIES = {
  * configuration, never by a code path" is enforced: every caller reaches a
  * provider through this lookup, never by importing `ReplayModelProvider` (or
  * a future local/remote implementation) directly.
+ * The request a provider is handed mirrors the harness's own `GenerateOptions`
+ * (`@deepseek-ai/dsh-llm`), narrowed to what a provider can act on. A provider
+ * may ignore any field — `replay` reads only `messages` — but the fields are
+ * passed rather than dropped, because `tools` is what makes real tool calling
+ * possible at all and a provider cannot ask for it later.
+ *
+ * A provider yields pieces, not harness chunks: `{ type: "text", text }` or
+ * `{ type: "tool-call", id, name, arguments }` where `arguments` is a raw JSON
+ * **string**. `llm-adapter.js` turns those into the harness's block protocol.
+ *
  * @param {string} name - one of "replay", "local", "remote".
- * @returns {{ answer(request: { messages: unknown[] }): AsyncGenerator<{ type: "text", text: string }> }}
+ * @returns {{ answer(request: {
+ *   messages: unknown[],
+ *   tools?: { name: string, description: string, parameters: Record<string, unknown> }[],
+ *   model?: string,
+ *   system?: string,
+ *   sessionId?: string,
+ *   signal?: AbortSignal,
+ * }): AsyncGenerator<{ type: "text", text: string } | { type: "tool-call", id: string, name: string, arguments: string }> }}
  */
 export function createModelProvider(name) {
 	const factory = FACTORIES[name];

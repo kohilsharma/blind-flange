@@ -5,64 +5,68 @@
 # (Stories 3.5-3.6) and the licence loader (Story 3.4) all read from, so
 # "how do you add a model?" is answered by editing this file and nothing else.
 #
-# Phase 0 runs on the `replay` provider and downloads no weights. These
-# entries are still real models with real licences: the declaration drives
-# the UI list, the router score and the licence gate whether or not a
-# weight file is ever fetched (Story 3.3, third acceptance block).
+# REPLACED 29 August 2026. The original fleet declared four 7B-class models
+# chosen while Phase 0 ran on `replay` and downloaded no weights, so nothing
+# ever had to fit in memory. The `local` provider now runs real inference on
+# this hardware — a GTX 1650 Ti with 4 GB and 7 GB of system RAM — and a 7B at
+# Q4_K_M is ~4.7 GB, so none of them could load. These are the models that
+# actually run, and `weights:` names the file each one loads from.
 #
-# LICENCE POLICY (docs/licence-policy.md): only Apache-2.0, MIT,
-# BSD-2-Clause and BSD-3-Clause ship. `Qwen/Qwen2.5-3B-Instruct` is
-# declared here *specifically so the loader can refuse it* (Story 3.4) —
-# it is the same family, publisher and release as the 7B, under a
-# different licence, so the refusal is checkable in ten seconds.
+# Two of them stay resident together (2.74 GB + 0.99 GB), which is what lets
+# the router switch members between turns without a reload.
 #
-# Each `licence` below was re-verified on 28 August 2026 by reading the
-# licence text in the model repository at the exact `revision` pinned here
-# (NFR1) — not from a blog post, not from this project's own tables:
-#   - Qwen2.5-7B-Instruct       LICENSE file  -> "Apache License, Version 2.0"
-#   - Qwen2.5-Coder-7B-Instruct LICENSE file  -> "Apache License, Version 2.0"
-#   - Qwen2.5-3B-Instruct       LICENSE file  -> "Qwen RESEARCH LICENSE AGREEMENT"
-#   - Qwen2.5-VL-7B-Instruct    no LICENSE file exists at any revision; the
-#     `license: apache-2.0` field in README.md YAML frontmatter at the
-#     pinned revision is the repository's primary licence declaration
-#     (recorded decision, 28 August 2026 — see docs/licence-policy.md).
+# `Qwen/Qwen2.5-3B-Instruct` is kept and unchanged: it is declared here
+# *specifically so the loader can refuse it* (Story 3.4), and that refusal is
+# asserted by the loader tests. It is not a candidate for running.
+#
+# The separate vision-document member is gone because it is no longer needed:
+# Qwen3.5-4B is natively multimodal, so one member covers document, drawing
+# and calculation rather than two members splitting them.
+#
+# LICENCE POLICY (docs/licence-policy.md): the allow-list is eleven names as
+# of ADR-0006. Each `licence` below was verified by reading the licence text
+# in the model repository at the exact `revision` pinned here (NFR1) — not
+# from a blog post, not from a model card's metadata, not from this project's
+# own tables:
+#   - Qwen3.5-4B                  LICENSE @ 851bf6e8 -> "Apache License"  (29 Aug 2026)
+#   - Qwen2.5-Coder-1.5B-Instruct LICENSE @ 2e1fd397 -> "Apache License"  (29 Aug 2026)
+#   - Qwen2.5-3B-Instruct         LICENSE @ aa8e7253 -> "Qwen RESEARCH LICENSE AGREEMENT"
+#
+# Checked and rejected while choosing these: `Qwen/Qwen2.5-Coder-3B-Instruct`
+# reports licence `other` (the Qwen Research Licence) and would be refused by
+# the loader exactly as the 3B is — the 1.5B Coder is the Apache-2.0 tier.
+# `google/gemma-4-E4B-it` is genuinely Apache-2.0 (Gemma 4 dropped the Gemma
+# Terms that Gemma 3 shipped under) and is therefore admissible, but its
+# Q4_K_M is 4.98 GB and does not fit; it was excluded on size, not licence.
 #
 # No embedder or reranker is declared: retrieval is past the Phase 0 cut
 # line, and declaring unused members would mean verifying licences we do
 # not need (Story 3.3).
 
 fleet:
-  - name: Qwen/Qwen2.5-7B-Instruct
+  - name: Qwen/Qwen3.5-4B
     role: general reasoner
     licence: Apache-2.0
     licence_source: LICENSE file at the pinned revision
-    revision: a09a35458c702b33eeacc393d103063234e8bc28
-    size: 7B
-    context: 32768
-    modalities: [text]
-    capabilities: [general-reasoning, instruction-following, tool-use]
+    revision: 851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a
+    weights: Qwen3.5-4B-Q4_K_M.gguf
+    size: 4B
+    context: 262144
+    modalities: [text, image]
+    capabilities: [general-reasoning, instruction-following, tool-use, document-understanding, drawing-understanding, visual-grounding]
+    note: "natively multimodal, so it serves the document, drawing and calculation task types; Q4_K_M is 2.74 GB"
 
-  - name: Qwen/Qwen2.5-Coder-7B-Instruct
+  - name: Qwen/Qwen2.5-Coder-1.5B-Instruct
     role: coder
     licence: Apache-2.0
     licence_source: LICENSE file at the pinned revision
-    revision: c03e6d358207e414f1eca0bb1891e29f1db0e242
-    size: 7B
+    revision: 2e1fd397ee46e1388853d2af2c993145b0f1098a
+    weights: Qwen2.5-Coder-1.5B-Instruct-Q4_K_M.gguf
+    size: 1.5B
     context: 32768
     modalities: [text]
     capabilities: [code-generation, code-reasoning, tool-use]
-    note: serves the sandboxed coding task
-
-  - name: Qwen/Qwen2.5-VL-7B-Instruct
-    role: vision-document
-    licence: Apache-2.0
-    licence_source: README.md YAML frontmatter at the pinned revision (no LICENSE file in repo)
-    revision: cc594898137f460bfe9f0759e9844b3ce807cfb5
-    size: 7B
-    context: 128000
-    modalities: [text, image]
-    capabilities: [document-understanding, drawing-understanding, visual-grounding]
-    note: serves the document and drawing task types
+    note: "serves the sandboxed coding task; Q4_K_M is 0.99 GB, so it stays resident alongside the 4B"
 
   - name: Qwen/Qwen2.5-3B-Instruct
     role: none

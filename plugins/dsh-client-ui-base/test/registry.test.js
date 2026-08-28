@@ -109,14 +109,13 @@ test("allowedFleet drops the disallowed-licence member", () => {
 	});
 });
 
-test("the shipped registry/models.yaml declares exactly the Phase 0 fleet with the story's licences", () => {
+test("the shipped registry/models.yaml declares exactly the fleet with the story's licences", () => {
 	const fleet = readFleet();
 	assert.deepEqual(
 		fleet.map((m) => [m.name, m.licence]),
 		[
-			["Qwen/Qwen2.5-7B-Instruct", "Apache-2.0"],
-			["Qwen/Qwen2.5-Coder-7B-Instruct", "Apache-2.0"],
-			["Qwen/Qwen2.5-VL-7B-Instruct", "Apache-2.0"],
+			["Qwen/Qwen3.5-4B", "Apache-2.0"],
+			["Qwen/Qwen2.5-Coder-1.5B-Instruct", "Apache-2.0"],
 			["Qwen/Qwen2.5-3B-Instruct", "Qwen Research Licence"],
 		],
 	);
@@ -128,9 +127,18 @@ test("the shipped registry/models.yaml declares exactly the Phase 0 fleet with t
 	}
 });
 
-test("the shipped registry omits the disallowed member from the model list, keeps the three that load", () => {
+test("every runnable member names the weights file it loads from, and the refused one does not", () => {
+	// `weights` is what LocalModelProvider sends as llama-server's `model`, so a
+	// member the loader admits without one cannot actually be routed to.
+	for (const member of allowedFleet()) {
+		assert.ok(member.weights, `${member.name} names a weights file`);
+		assert.match(member.weights, /\.gguf$/);
+	}
+});
+
+test("the shipped registry omits the disallowed member from the model list, keeps the two that load", () => {
 	assert.deepEqual(
 		allowedFleet().map((m) => m.name),
-		["Qwen/Qwen2.5-7B-Instruct", "Qwen/Qwen2.5-Coder-7B-Instruct", "Qwen/Qwen2.5-VL-7B-Instruct"],
+		["Qwen/Qwen3.5-4B", "Qwen/Qwen2.5-Coder-1.5B-Instruct"],
 	);
 });

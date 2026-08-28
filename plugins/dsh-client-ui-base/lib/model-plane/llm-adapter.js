@@ -82,7 +82,20 @@ async function* streamImpl(modelProvider, options) {
 	let openText = "";
 	let sawToolCall = false;
 	try {
-		for await (const piece of modelProvider.answer({ messages: options.messages })) {
+		// Everything the harness assembled for this call, not just the messages.
+		// `tools` is the one that matters: `GenerateOptions.tools` carries the
+		// JSON schema of every tool visible to this agent, and dropping it was
+		// why a real model could only ever chat — it was never told the tools
+		// exist. `system` is the harness's assembled prompt, which a provider
+		// must use rather than inventing its own. `replay` ignores all of it.
+		for await (const piece of modelProvider.answer({
+			messages: options.messages,
+			tools: options.tools ?? [],
+			model: options.model,
+			system: options.system,
+			sessionId: options.sessionId,
+			signal: options.signal,
+		})) {
 			if (piece.type === "text") {
 				if (piece.text.length === 0) continue;
 				if (openTextIndex === -1) {
